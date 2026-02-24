@@ -1,9 +1,10 @@
 """
-This module defines the database models for analyzing hardware components,
-vendor circularity programs, and financial/emissions metrics for Kyndryl solutions.
+This module defines the database models for analyzing
+hardware components, vendor circularity programs, and
+financial/emissions metrics for Kyndryl solutions.
 """
 
-from typing import List, Optional
+from typing import List
 
 from sqlalchemy import (
     INTEGER,
@@ -15,7 +16,12 @@ from sqlalchemy import (
     ForeignKey,
     Table,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 # Constants for schema limits and precision
 CHAR_LIMIT_SHORT = 50
@@ -27,15 +33,23 @@ class Base(DeclarativeBase):
     pass
 
 
-# Association table for Many-to-Many relationship between Components and Programs.
-# A single component (e.g., NVIDIA H100) might be eligible for multiple programs
+# Association table for Many-to-Many relationship
+# between Components and Programs.
+# A single component (e.g., NVIDIA H100) might be
+# eligible for multiple programs
 # (e.g., "AI Buyback" AND "Green Recycling Initiative").
 component_program_association = Table(
     "component_program_association",
     Base.metadata,
-    Column("component_id", ForeignKey("component.id"), primary_key=True),
     Column(
-        "program_id", ForeignKey("circularity_program.id"), primary_key=True
+        "component_id",
+        ForeignKey("component.id"),
+        primary_key=True,
+    ),
+    Column(
+        "program_id",
+        ForeignKey("circularity_program.id"),
+        primary_key=True,
     ),
 )
 
@@ -43,50 +57,113 @@ component_program_association = Table(
 class Company(Base):
     __tablename__ = "company"
 
-    id: Mapped[int] = mapped_column(INTEGER, primary_key=True)
-    name: Mapped[str] = mapped_column(VARCHAR(CHAR_LIMIT_SHORT))
+    id: Mapped[int] = mapped_column(
+        INTEGER, primary_key=True
+    )
+    name: Mapped[str] = mapped_column(
+        VARCHAR(CHAR_LIMIT_SHORT),
+        info={
+            "label": "Vendor Name",
+            "description": (
+                "The company or manufacturer name."
+            ),
+        },
+    )
 
     # Relationships
     components: Mapped[List["Component"]] = relationship(
         back_populates="company"
     )
-    programs: Mapped[List["CircularityProgram"]] = relationship(
-        back_populates="company"
-    )
+    programs: Mapped[
+        List["CircularityProgram"]
+    ] = relationship(back_populates="company")
 
 
 class CircularityProgram(Base):
     """
-    Stores qualitative and quantitative data on vendor specific programs.
-    (e.g., HP Inspire, Cisco Refresh, IBM Global Asset Recovery)
+    Stores qualitative and quantitative data on
+    vendor specific programs.
+    (e.g., HP Inspire, Cisco Refresh,
+    IBM Global Asset Recovery)
     """
 
     __tablename__ = "circularity_program"
 
-    id: Mapped[int] = mapped_column(INTEGER, primary_key=True)
-    company_id: Mapped[int] = mapped_column(ForeignKey("company.id"))
+    id: Mapped[int] = mapped_column(
+        INTEGER, primary_key=True
+    )
+    company_id: Mapped[int] = mapped_column(
+        ForeignKey("company.id"),
+        info={
+            "label": "Vendor",
+            "description": (
+                "The vendor offering the program."
+            ),
+        },
+    )
 
-    name: Mapped[str] = mapped_column(VARCHAR(CHAR_LIMIT_SHORT))
+    name: Mapped[str] = mapped_column(
+        VARCHAR(CHAR_LIMIT_SHORT),
+        info={
+            "label": "Program Name",
+            "description": (
+                "The name of the circularity program."
+            ),
+        },
+    )
     program_type: Mapped[str] = mapped_column(
-        VARCHAR(CHAR_LIMIT_SHORT)
-    )  # e.g., "Buyback", "Recycling", "Lease-Return"
+        VARCHAR(CHAR_LIMIT_SHORT),
+        info={
+            "label": "Program Type",
+            "description": (
+                "Category of program "
+                "(e.g., Buyback, Recycling, "
+                "Lease-Return)."
+            ),
+        },
+    )
 
     # Qualitative Data
     description: Mapped[str] = mapped_column(
-        TEXT
-    )  # Full details of the program terms
+        TEXT,
+        info={
+            "label": "Description",
+            "description": (
+                "Full details of the program terms."
+            ),
+        },
+    )
     eligibility_criteria: Mapped[str] = mapped_column(
-        TEXT
-    )  # What condition must the hardware be in?
+        TEXT,
+        info={
+            "label": "Eligibility Criteria",
+            "description": (
+                "What condition must the hardware "
+                "be in to qualify?"
+            ),
+        },
+    )
 
     # Financial Impact Estimates (for analysis)
     avg_reimbursement_rate: Mapped[float] = mapped_column(
-        REAL(precision=PRECISION), nullable=True
-    )  # % of original value returned
+        REAL(precision=PRECISION),
+        nullable=True,
+        info={
+            "label": "Avg Reimbursement Rate",
+            "description": (
+                "Percentage of original value "
+                "returned (0.0 to 1.0)."
+            ),
+        },
+    )
 
     # Relationships
-    company: Mapped["Company"] = relationship(back_populates="programs")
-    eligible_components: Mapped[List["Component"]] = relationship(
+    company: Mapped["Company"] = relationship(
+        back_populates="programs"
+    )
+    eligible_components: Mapped[
+        List["Component"]
+    ] = relationship(
         secondary=component_program_association,
         back_populates="applicable_programs",
     )
@@ -96,61 +173,178 @@ class Component(Base):
     __tablename__ = "component"
 
     # Basic Info
-    id: Mapped[int] = mapped_column(INTEGER, primary_key=True)
-    company_id: Mapped[int] = mapped_column(ForeignKey("company.id"))
-    name: Mapped[str] = mapped_column(VARCHAR(CHAR_LIMIT_SHORT))
-    release_year: Mapped[int] = mapped_column(INTEGER)
-    type: Mapped[str] = mapped_column(VARCHAR(CHAR_LIMIT_SHORT))
+    id: Mapped[int] = mapped_column(
+        INTEGER, primary_key=True
+    )
+    company_id: Mapped[int] = mapped_column(
+        ForeignKey("company.id"),
+        info={
+            "label": "Vendor",
+            "description": (
+                "The manufacturer providing "
+                "the component."
+            ),
+        },
+    )
+    name: Mapped[str] = mapped_column(
+        VARCHAR(CHAR_LIMIT_SHORT),
+        info={
+            "label": "Product Name",
+            "description": (
+                "The specific model name "
+                "(e.g., z16, H100)."
+            ),
+        },
+    )
+    release_year: Mapped[int] = mapped_column(
+        INTEGER,
+        info={
+            "label": "Release Year",
+            "description": (
+                "Used to calculate vintage "
+                "and efficiency gains."
+            ),
+        },
+    )
+    type: Mapped[str] = mapped_column(
+        VARCHAR(CHAR_LIMIT_SHORT)
+    )
 
     # Emissions (Scope 3 Focus)
-    # The raw number provided by the OEM (e.g., 1200 kgCO2e)
     pcf_value: Mapped[float] = mapped_column(
-        REAL(precision=PRECISION), nullable=True
+        REAL(precision=PRECISION),
+        nullable=True,
+        info={
+            "label": "Reported Emissions (kgCO2e)",
+            "description": (
+                "The raw carbon footprint number "
+                "provided by the vendor."
+            ),
+        },
     )
 
-    # What does that number cover?
-    # specific values: "cradle_to_gate" (manufacturing only) OR "cradle_to_grave" (total life)
     pcf_boundary: Mapped[str] = mapped_column(
-        VARCHAR(CHAR_LIMIT_SHORT), nullable=True
+        VARCHAR(CHAR_LIMIT_SHORT),
+        nullable=True,
+        info={
+            "label": "Emissions Scope",
+            "description": (
+                "Does the reported number include "
+                "use-phase? (Cradle-to-Gate vs. "
+                "Cradle-to-Grave)."
+            ),
+        },
     )
 
-    # If "cradle_to_grave", what did they assume? (e.g. "5 years use, US Grid")
-    pcf_assumptions: Mapped[str | None] = mapped_column(TEXT, nullable=True)
+    pcf_assumptions: Mapped[str | None] = mapped_column(
+        TEXT,
+        nullable=True,
+        info={
+            "label": "Emissions Assumptions",
+            "description": (
+                "If Cradle-to-Grave, what "
+                "grid/usage did they assume?"
+            ),
+        },
+    )
 
     # Power
-    # Even if you have a total PCF, you STILL need this.
-    # Why? Because the vendor's "Use Phase" assumption (e.g. Global average grid)
-    # is different from Kyndryl's actual deployment (New York grid).
-    # You may need to 'back out' the use phase from the PCF and recalculate it
-    # for New York specifically.
     power_draw_watts_tdp: Mapped[float] = mapped_column(
-        REAL(precision=PRECISION), nullable=True
+        REAL(precision=PRECISION),
+        nullable=True,
+        info={
+            "label": "Max Power (Watts TDP)",
+            "description": (
+                "Thermal Design Power. Used to "
+                "calculate worst-case "
+                "Scope 2 emissions."
+            ),
+        },
     )
-    power_draw_watts_idle: Mapped[float | None] = mapped_column(
-        REAL(precision=PRECISION), nullable=True
+    power_draw_watts_idle: Mapped[
+        float | None
+    ] = mapped_column(
+        REAL(precision=PRECISION),
+        nullable=True,
+        info={
+            "label": "Idle Power (Watts)",
+            "description": (
+                "Power draw at idle. Used for "
+                "realistic Scope 2 estimates."
+            ),
+        },
     )
 
     # Financial & TCO
     list_price_capex: Mapped[float] = mapped_column(
-        REAL(precision=PRECISION)
-    )  # MSRP
-    is_lease_available: Mapped[bool] = mapped_column(Boolean, default=False)
-    monthly_lease_opex: Mapped[float | None] = mapped_column(
-        REAL(precision=PRECISION), nullable=True
+        REAL(precision=PRECISION),
+        info={
+            "label": "List Price (CAPEX)",
+            "description": (
+                "Upfront purchase cost (MSRP)."
+            ),
+        },
     )
-    lease_term_months: Mapped[int | None] = mapped_column(
-        INTEGER, nullable=True
+    is_lease_available: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        info={
+            "label": "Lease Available?",
+            "description": (
+                "Is an As-a-Service / lease "
+                "option offered? (TRUE/FALSE)."
+            ),
+        },
+    )
+    monthly_lease_opex: Mapped[
+        float | None
+    ] = mapped_column(
+        REAL(precision=PRECISION),
+        nullable=True,
+        info={
+            "label": "Monthly Lease (OPEX)",
+            "description": (
+                "Cost per month if leased "
+                "(As-a-Service model)."
+            ),
+        },
+    )
+    lease_term_months: Mapped[
+        int | None
+    ] = mapped_column(
+        INTEGER,
+        nullable=True,
+        info={
+            "label": "Lease Term (Months)",
+            "description": (
+                "Duration of the lease "
+                "agreement in months."
+            ),
+        },
     )
 
     # Circularity Metric
-    # e.g., 0.0 to 1.0 score based on recycled content or recyclability
-    circularity_score: Mapped[float | None] = mapped_column(
-        REAL(precision=PRECISION), nullable=True
+    circularity_score: Mapped[
+        float | None
+    ] = mapped_column(
+        REAL(precision=PRECISION),
+        nullable=True,
+        info={
+            "label": "Circularity Score (0-1)",
+            "description": (
+                "Internal metric: "
+                "1.0 = Fully Recyclable/Circular."
+            ),
+        },
     )
 
     # Relationships
-    company: Mapped["Company"] = relationship(back_populates="components")
-    applicable_programs: Mapped[List["CircularityProgram"]] = relationship(
+    company: Mapped["Company"] = relationship(
+        back_populates="components"
+    )
+    applicable_programs: Mapped[
+        List["CircularityProgram"]
+    ] = relationship(
         secondary=component_program_association,
         back_populates="eligible_components",
     )
@@ -165,41 +359,101 @@ class Component(Base):
 class Mainframe(Component):
     __tablename__ = "mainframe"
     id: Mapped[int] = mapped_column(
-        INTEGER, ForeignKey("component.id"), primary_key=True
+        INTEGER,
+        ForeignKey("component.id"),
+        primary_key=True,
     )
 
     # Mainframe specific metrics
     mips_rating: Mapped[int] = mapped_column(
-        INTEGER, nullable=True
-    )  # Millions of Instructions Per Second
-    floor_space_sqft: Mapped[float] = mapped_column(REAL(precision=PRECISION))
+        INTEGER,
+        nullable=True,
+        info={
+            "label": "MIPS (Performance)",
+            "description": (
+                "Millions of Instructions Per "
+                "Second (Mainframe specific)."
+            ),
+        },
+    )
+    floor_space_sqft: Mapped[float] = mapped_column(
+        REAL(precision=PRECISION),
+        info={
+            "label": "Floor Space (sqft)",
+            "description": (
+                "Physical footprint of the "
+                "mainframe in square feet."
+            ),
+        },
+    )
 
-    __mapper_args__ = {"polymorphic_identity": "mainframe"}
+    __mapper_args__ = {
+        "polymorphic_identity": "mainframe",
+    }
 
 
 class RackServer(Component):
     __tablename__ = "rack_server"
     id: Mapped[int] = mapped_column(
-        INTEGER, ForeignKey("component.id"), primary_key=True
+        INTEGER,
+        ForeignKey("component.id"),
+        primary_key=True,
     )
 
     size_u: Mapped[int] = mapped_column(
-        INTEGER
-    )  # Rack units (e.g., 1U, 2U, 4U)
-    socket_count: Mapped[int] = mapped_column(INTEGER)  # CPU sockets
+        INTEGER,
+        info={
+            "label": "Rack Size (U)",
+            "description": (
+                "Rack units (e.g., 1U, 2U, 4U)."
+            ),
+        },
+    )
+    socket_count: Mapped[int] = mapped_column(
+        INTEGER,
+        info={
+            "label": "Socket Count",
+            "description": (
+                "Number of CPU sockets "
+                "in the server."
+            ),
+        },
+    )
 
-    __mapper_args__ = {"polymorphic_identity": "rack_server"}
+    __mapper_args__ = {
+        "polymorphic_identity": "rack_server",
+    }
 
 
 class GPU(Component):
     __tablename__ = "gpu"
     id: Mapped[int] = mapped_column(
-        INTEGER, ForeignKey("component.id"), primary_key=True
+        INTEGER,
+        ForeignKey("component.id"),
+        primary_key=True,
     )
 
-    vram_gb: Mapped[int] = mapped_column(INTEGER)
+    vram_gb: Mapped[int] = mapped_column(
+        INTEGER,
+        info={
+            "label": "VRAM (GB)",
+            "description": (
+                "Video Memory size "
+                "(Critical for AI model weights)."
+            ),
+        },
+    )
     interconnect_type: Mapped[str] = mapped_column(
-        VARCHAR(CHAR_LIMIT_SHORT)
-    )  # e.g., NVLink, PCIe
+        VARCHAR(CHAR_LIMIT_SHORT),
+        info={
+            "label": "Interconnect",
+            "description": (
+                "Speed of connection between "
+                "chips (e.g., NVLink, PCIe)."
+            ),
+        },
+    )
 
-    __mapper_args__ = {"polymorphic_identity": "gpu"}
+    __mapper_args__ = {
+        "polymorphic_identity": "gpu",
+    }
