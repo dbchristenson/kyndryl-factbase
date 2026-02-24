@@ -12,7 +12,7 @@ import models
 from sqlalchemy import inspect as sa_inspect
 
 # Columns to exclude from data-entry sheets
-_SKIP_COLUMNS = {"id", "type"}
+_SKIP_COLUMNS = {"id", "type", "component_id", "program_id"}
 
 OUTPUT_FILE = "Kyndryl_Hardware_Data_Collection.xlsx"
 
@@ -95,6 +95,7 @@ def generate_excel_template():
     program_cols = get_entry_columns(
         models.CircularityProgram
     )
+    source_cols = get_entry_columns(models.DataSource)
 
     # Merge base + subclass columns
     sheets = [
@@ -108,12 +109,14 @@ def generate_excel_template():
             base_cols, gpu_cols,
         )),
         ("Vendor Programs", program_cols),
+        ("Data Sources", source_cols),
     ]
 
     # --- Tab 0: Data Dictionary ---
     all_columns = _merge_columns(
         base_cols, mainframe_cols,
         rack_cols, gpu_cols, program_cols,
+        source_cols,
     )
     dict_ws = workbook.add_worksheet(
         "READ ME - Definitions"

@@ -167,6 +167,9 @@ class CircularityProgram(Base):
         secondary=component_program_association,
         back_populates="applicable_programs",
     )
+    sources: Mapped[
+        List["DataSource"]
+    ] = relationship(back_populates="program")
 
 
 class Component(Base):
@@ -381,6 +384,9 @@ class Component(Base):
         secondary=component_program_association,
         back_populates="eligible_components",
     )
+    sources: Mapped[
+        List["DataSource"]
+    ] = relationship(back_populates="component")
 
     # Polymorphic setup
     __mapper_args__ = {
@@ -609,3 +615,89 @@ class GPU(Component):
     __mapper_args__ = {
         "polymorphic_identity": "gpu",
     }
+
+
+class DataSource(Base):
+    """
+    Tracks the provenance of individual data fields.
+    Each row documents the source for one field on one
+    Component or CircularityProgram record.
+    """
+
+    __tablename__ = "data_source"
+
+    id: Mapped[int] = mapped_column(
+        INTEGER, primary_key=True
+    )
+    component_id: Mapped[
+        int | None
+    ] = mapped_column(
+        ForeignKey("component.id"),
+        nullable=True,
+        info={
+            "label": "Component",
+            "description": (
+                "The component this source "
+                "documents (leave blank if "
+                "documenting a program field)."
+            ),
+        },
+    )
+    program_id: Mapped[
+        int | None
+    ] = mapped_column(
+        ForeignKey("circularity_program.id"),
+        nullable=True,
+        info={
+            "label": "Program",
+            "description": (
+                "The circularity program this "
+                "source documents (leave blank "
+                "if documenting a component "
+                "field)."
+            ),
+        },
+    )
+    field_name: Mapped[str] = mapped_column(
+        VARCHAR(CHAR_LIMIT_LONG),
+        info={
+            "label": "Field Name",
+            "description": (
+                "The database column name of "
+                "the field being sourced "
+                "(e.g., 'list_price_capex')."
+            ),
+        },
+    )
+    url: Mapped[str | None] = mapped_column(
+        TEXT,
+        nullable=True,
+        info={
+            "label": "Source URL",
+            "description": (
+                "URL or publication citation "
+                "for this data point."
+            ),
+        },
+    )
+    notes: Mapped[str | None] = mapped_column(
+        TEXT,
+        nullable=True,
+        info={
+            "label": "Notes",
+            "description": (
+                "Assumptions, caveats, or "
+                "context about this data point "
+                "(e.g., 'price estimated from "
+                "reseller listing')."
+            ),
+        },
+    )
+
+    # Relationships
+    component: Mapped["Component"] = relationship(
+        back_populates="sources"
+    )
+    program: Mapped[
+        "CircularityProgram"
+    ] = relationship(back_populates="sources")
