@@ -206,6 +206,22 @@ class Component(Base):
             ),
         },
     )
+    product_family: Mapped[
+        str | None
+    ] = mapped_column(
+        VARCHAR(CHAR_LIMIT_SHORT),
+        nullable=True,
+        info={
+            "label": "Product Family",
+            "description": (
+                "Groups generations together "
+                "(e.g., 'IBM z', 'Power E', "
+                "'ThinkSystem SR'). Used for "
+                "filtering/grouping "
+                "generational queries."
+            ),
+        },
+    )
     type: Mapped[str] = mapped_column(
         VARCHAR(CHAR_LIMIT_SHORT)
     )
@@ -258,6 +274,23 @@ class Component(Base):
                 "Thermal Design Power. Used to "
                 "calculate worst-case "
                 "Scope 2 emissions."
+            ),
+        },
+    )
+    power_draw_watts_typical: Mapped[
+        float | None
+    ] = mapped_column(
+        REAL(precision=PRECISION),
+        nullable=True,
+        info={
+            "label": "Typical Power (Watts)",
+            "description": (
+                "Typical operating power draw "
+                "in watts. Represents realistic "
+                "workload power, not worst-case "
+                "TDP or best-case idle. "
+                "Denominator for efficiency "
+                "calculations."
             ),
         },
     )
@@ -376,6 +409,50 @@ class Mainframe(Component):
             ),
         },
     )
+    msu_rating: Mapped[
+        int | None
+    ] = mapped_column(
+        INTEGER,
+        nullable=True,
+        info={
+            "label": "MSU Rating",
+            "description": (
+                "Million Service Units — IBM's "
+                "standard capacity/licensing "
+                "metric. More stable than MIPS "
+                "for cross-generational "
+                "comparison."
+            ),
+        },
+    )
+    num_cps: Mapped[int | None] = mapped_column(
+        INTEGER,
+        nullable=True,
+        info={
+            "label": "Number of CPs",
+            "description": (
+                "Number of configurable Central "
+                "Processors (CPs). Required "
+                "for per-core efficiency "
+                "normalization."
+            ),
+        },
+    )
+    num_ifls: Mapped[
+        int | None
+    ] = mapped_column(
+        INTEGER,
+        nullable=True,
+        info={
+            "label": "Number of IFLs",
+            "description": (
+                "Number of Integrated Facility "
+                "for Linux engines. Tracks "
+                "Linux-dedicated capacity "
+                "separately."
+            ),
+        },
+    )
     floor_space_sqft: Mapped[float] = mapped_column(
         REAL(precision=PRECISION),
         info={
@@ -419,6 +496,52 @@ class RackServer(Component):
             ),
         },
     )
+    num_cores: Mapped[
+        int | None
+    ] = mapped_column(
+        INTEGER,
+        nullable=True,
+        info={
+            "label": "Total CPU Cores",
+            "description": (
+                "Total physical CPU cores. "
+                "Needed for per-core efficiency "
+                "normalization."
+            ),
+        },
+    )
+    benchmark_score: Mapped[
+        float | None
+    ] = mapped_column(
+        REAL(precision=PRECISION),
+        nullable=True,
+        info={
+            "label": "Benchmark Score",
+            "description": (
+                "Performance score from a "
+                "standardized benchmark. The "
+                "throughput numerator for "
+                "efficiency calculations."
+            ),
+        },
+    )
+    benchmark_type: Mapped[
+        str | None
+    ] = mapped_column(
+        VARCHAR(CHAR_LIMIT_SHORT),
+        nullable=True,
+        info={
+            "label": "Benchmark Type",
+            "description": (
+                "Identifies which benchmark "
+                "standard was used (e.g., "
+                "'SPECint_rate2017', "
+                "'SPECpower_ssj2008', "
+                "'TPC-C'). Only compare rows "
+                "with matching benchmark_type."
+            ),
+        },
+    )
 
     __mapper_args__ = {
         "polymorphic_identity": "rack_server",
@@ -440,6 +563,35 @@ class GPU(Component):
             "description": (
                 "Video Memory size "
                 "(Critical for AI model weights)."
+            ),
+        },
+    )
+    tflops_fp16: Mapped[
+        float | None
+    ] = mapped_column(
+        REAL(precision=PRECISION),
+        nullable=True,
+        info={
+            "label": "TFLOPS (FP16)",
+            "description": (
+                "Half-precision floating-point "
+                "throughput (TFLOPS). Primary "
+                "AI inference performance "
+                "metric."
+            ),
+        },
+    )
+    tflops_fp32: Mapped[
+        float | None
+    ] = mapped_column(
+        REAL(precision=PRECISION),
+        nullable=True,
+        info={
+            "label": "TFLOPS (FP32)",
+            "description": (
+                "Single-precision floating-point "
+                "throughput (TFLOPS). Standard "
+                "compute performance metric."
             ),
         },
     )
