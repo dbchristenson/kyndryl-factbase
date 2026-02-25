@@ -53,6 +53,36 @@ component_program_association = Table(
     ),
 )
 
+# Association table for Many-to-Many relationship
+# between ScenarioOptions and Components.
+# Each option in a migration scenario may include
+# multiple components (e.g., rack servers + GPUs),
+# each with a quantity and a role in the solution.
+scenario_option_component = Table(
+    "scenario_option_component",
+    Base.metadata,
+    Column(
+        "option_id",
+        ForeignKey("scenario_option.id"),
+        primary_key=True,
+    ),
+    Column(
+        "component_id",
+        ForeignKey("component.id"),
+        primary_key=True,
+    ),
+    Column(
+        "quantity",
+        INTEGER,
+        default=1,
+    ),
+    Column(
+        "role",
+        VARCHAR(CHAR_LIMIT_SHORT),
+        nullable=True,
+    ),
+)
+
 
 class Company(Base):
     __tablename__ = "company"
@@ -266,6 +296,36 @@ class Component(Base):
             ),
         },
     )
+    pcf_source: Mapped[str | None] = mapped_column(
+        VARCHAR(CHAR_LIMIT_LONG),
+        nullable=True,
+        info={
+            "label": "PCF Data Source",
+            "description": (
+                "Where the PCF value was "
+                "obtained (e.g., vendor report "
+                "URL, internal estimate)."
+            ),
+        },
+    )
+    pcf_confidence: Mapped[
+        str | None
+    ] = mapped_column(
+        VARCHAR(CHAR_LIMIT_SHORT),
+        nullable=True,
+        info={
+            "label": "PCF Confidence Level",
+            "description": (
+                "Data quality indicator. "
+                "Valid values: "
+                "'vendor_published', "
+                "'vendor_requested', "
+                "'third_party', "
+                "'estimated', "
+                "'unavailable'."
+            ),
+        },
+    )
 
     # Power
     power_draw_watts_tdp: Mapped[float] = mapped_column(
@@ -355,21 +415,6 @@ class Component(Base):
             "description": (
                 "Duration of the lease "
                 "agreement in months."
-            ),
-        },
-    )
-
-    # Circularity Metric
-    circularity_score: Mapped[
-        float | None
-    ] = mapped_column(
-        REAL(precision=PRECISION),
-        nullable=True,
-        info={
-            "label": "Circularity Score (0-1)",
-            "description": (
-                "Internal metric: "
-                "1.0 = Fully Recyclable/Circular."
             ),
         },
     )
@@ -701,3 +746,314 @@ class DataSource(Base):
     program: Mapped[
         "CircularityProgram"
     ] = relationship(back_populates="sources")
+
+
+class MigrationScenario(Base):
+    """
+    Parent entity for a migration pilot evaluation.
+    Carries shared assumptions (electricity cost,
+    carbon intensity, PUE, discount rate) and
+    references the source system being replaced.
+    Each scenario contains one or more
+    ScenarioOptions representing competing
+    solutions.
+    """
+
+    __tablename__ = "migration_scenario"
+
+    id: Mapped[int] = mapped_column(
+        INTEGER, primary_key=True
+    )
+    name: Mapped[str] = mapped_column(
+        VARCHAR(CHAR_LIMIT_LONG),
+        info={
+            "label": "Scenario Name",
+            "description": (
+                "Title for this evaluation "
+                "(e.g., 'Banking Fraud "
+                "Inference Pilot')."
+            ),
+        },
+    )
+    description: Mapped[
+        str | None
+    ] = mapped_column(
+        TEXT,
+        nullable=True,
+        info={
+            "label": "Description",
+            "description": (
+                "Narrative context and "
+                "scope of the evaluation."
+            ),
+        },
+    )
+
+    # Source system being replaced
+    source_component_id: Mapped[
+        int
+    ] = mapped_column(
+        ForeignKey("component.id"),
+        info={
+            "label": "Source System",
+            "description": (
+                "The component being "
+                "replaced or upgraded "
+                "(e.g., the existing z14)."
+            ),
+        },
+    )
+    source_quantity: Mapped[int] = mapped_column(
+        INTEGER,
+        default=1,
+        info={
+            "label": "Source Quantity",
+            "description": (
+                "How many source systems "
+                "are being replaced."
+            ),
+        },
+    )
+
+    # Shared evaluation parameters
+    evaluation_years: Mapped[int] = mapped_column(
+        INTEGER,
+        default=5,
+        info={
+            "label": "Evaluation Period (Years)",
+            "description": (
+                "Timeframe for TCO and "
+                "LCA calculations."
+            ),
+        },
+    )
+    electricity_cost_kwh: Mapped[
+        float
+    ] = mapped_column(
+        REAL(precision=PRECISION),
+        info={
+            "label": "Electricity Cost ($/kWh)",
+            "description": (
+                "Assumed electricity rate "
+                "for energy cost modeling."
+            ),
+        },
+    )
+    grid_carbon_intensity: Mapped[
+        float
+    ] = mapped_column(
+        REAL(precision=PRECISION),
+        info={
+            "label": "Grid Carbon Intensity",
+            "description": (
+                "kgCO2e per kWh. Used for "
+                "Scope 2 emissions "
+                "calculation."
+            ),
+        },
+    )
+    pue: Mapped[float] = mapped_column(
+        REAL(precision=PRECISION),
+        default=1.5,
+        info={
+            "label": "PUE",
+            "description": (
+                "Power Usage Effectiveness "
+                "of the data center "
+                "facility."
+            ),
+        },
+    )
+    discount_rate: Mapped[float] = mapped_column(
+        REAL(precision=PRECISION),
+        default=0.08,
+        info={
+            "label": "Discount Rate",
+            "description": (
+                "For NPV calculations. "
+                "Default 8% (standard "
+                "corporate IT rate)."
+            ),
+        },
+    )
+    operating_hours_year: Mapped[
+        int
+    ] = mapped_column(
+        INTEGER,
+        default=8760,
+        info={
+            "label": "Operating Hours/Year",
+            "description": (
+                "Annual operating hours. "
+                "Default 8760 (24/7)."
+            ),
+        },
+    )
+    assumptions: Mapped[
+        str | None
+    ] = mapped_column(
+        TEXT,
+        nullable=True,
+        info={
+            "label": "Assumptions",
+            "description": (
+                "Free-text documentation "
+                "of all assumptions "
+                "(workload portability, "
+                "exclusions, etc.)."
+            ),
+        },
+    )
+
+    # Relationships
+    source_component: Mapped[
+        "Component"
+    ] = relationship(
+        foreign_keys=[source_component_id],
+    )
+    options: Mapped[
+        List["ScenarioOption"]
+    ] = relationship(
+        back_populates="scenario",
+    )
+
+
+class ScenarioOption(Base):
+    """
+    One option within a migration scenario.
+    (e.g., 'Upgrade to z17' or
+    'Dell Rack Servers + NVIDIA GPUs')
+    References components via the
+    scenario_option_component association table.
+    """
+
+    __tablename__ = "scenario_option"
+
+    id: Mapped[int] = mapped_column(
+        INTEGER, primary_key=True
+    )
+    scenario_id: Mapped[int] = mapped_column(
+        ForeignKey("migration_scenario.id"),
+        info={
+            "label": "Parent Scenario",
+            "description": (
+                "The migration scenario "
+                "this option belongs to."
+            ),
+        },
+    )
+    name: Mapped[str] = mapped_column(
+        VARCHAR(CHAR_LIMIT_LONG),
+        info={
+            "label": "Option Name",
+            "description": (
+                "Label for this option "
+                "(e.g., 'z17 Upgrade', "
+                "'Dell + NVIDIA Cluster')."
+            ),
+        },
+    )
+    description: Mapped[
+        str | None
+    ] = mapped_column(
+        TEXT,
+        nullable=True,
+        info={
+            "label": "Description",
+            "description": (
+                "Solution architecture "
+                "narrative for this option."
+            ),
+        },
+    )
+    financing_model: Mapped[
+        str | None
+    ] = mapped_column(
+        VARCHAR(CHAR_LIMIT_SHORT),
+        nullable=True,
+        info={
+            "label": "Financing Model",
+            "description": (
+                "How this option is funded. "
+                "Valid values: "
+                "'capex_purchase', "
+                "'lease_fmv', "
+                "'lease_buyout', "
+                "'tailored_fit', "
+                "'as_a_service'."
+            ),
+        },
+    )
+
+    # Circularity & residual value
+    circularity_program_id: Mapped[
+        int | None
+    ] = mapped_column(
+        ForeignKey("circularity_program.id"),
+        nullable=True,
+        info={
+            "label": "Takeback Program",
+            "description": (
+                "End-of-life disposition "
+                "program for this option's "
+                "equipment."
+            ),
+        },
+    )
+    residual_value_estimate: Mapped[
+        float | None
+    ] = mapped_column(
+        REAL(precision=PRECISION),
+        nullable=True,
+        info={
+            "label": "Residual Value ($)",
+            "description": (
+                "Estimated recovery value "
+                "at end of term via the "
+                "circularity program."
+            ),
+        },
+    )
+
+    # Catch-all for unmodeled costs
+    additional_infra_cost: Mapped[
+        float | None
+    ] = mapped_column(
+        REAL(precision=PRECISION),
+        nullable=True,
+        info={
+            "label": "Additional Infra Cost ($)",
+            "description": (
+                "Costs not captured in "
+                "component pricing "
+                "(middleware, networking, "
+                "API gateways, etc.)."
+            ),
+        },
+    )
+    notes: Mapped[str | None] = mapped_column(
+        TEXT,
+        nullable=True,
+        info={
+            "label": "Notes",
+            "description": (
+                "Any additional context "
+                "relevant to this option."
+            ),
+        },
+    )
+
+    # Relationships
+    scenario: Mapped[
+        "MigrationScenario"
+    ] = relationship(
+        back_populates="options",
+    )
+    circularity_program: Mapped[
+        "CircularityProgram"
+    ] = relationship()
+    components: Mapped[
+        List["Component"]
+    ] = relationship(
+        secondary=scenario_option_component,
+    )
