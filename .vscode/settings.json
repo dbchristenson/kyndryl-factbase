@@ -1,9 +1,0 @@
-{
-    "jupyter.notebookFileRoot": "${workspaceFolder}",
-    "[python]": {
-        "editor.formatOnSave": true,
-        "editor.defaultFormatter": "ms-python.autopep8"
-    },
-    "flake8.args": [],
-    "autopep8.args": []
-}
