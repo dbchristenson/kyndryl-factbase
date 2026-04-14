@@ -1,1 +1,6 @@
 *.ipynb
+*.zip
+*.csv
+*.spold
+*.xml
+data/ecoinvent/ecoinvent 3.11_cutoff_ecoSpold02
