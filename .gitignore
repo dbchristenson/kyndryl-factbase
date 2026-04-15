@@ -4,3 +4,6 @@
 *.spold
 *.xml
 data/ecoinvent/ecoinvent 3.11_cutoff_ecoSpold02
+data/ecoinvent/ecoinvent 3.11_cutoff_lcia_ecoSpold02
+10k_validation_log.md
+100k_validation_log.md

@@ -12,7 +12,7 @@ Or pass a custom root if your extracted folder is named differently:
     uv run python data/ecoinvent/generate_import_script.py --root "path/to/ecoinvent 3.11_cutoff_ecoSpold02"
 
 Output:
-    data/ecoinvent/openlca_import.ready.py
+    data/ecoinvent/openlca_ecoinvent_import.ready.py
 
 Copy that file's contents into openLCA's Python editor
 (Tools -> Developer tools -> Python) and press Run.
@@ -26,8 +26,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_RELEASE_DIR = HERE / "ecoinvent 3.11_cutoff_ecoSpold02"
-TEMPLATE_PATH = HERE / "openlca_import.py"
-OUTPUT_PATH = HERE / "openlca_import.ready.py"
+TEMPLATE_PATH = HERE / "openlca_ecoinvent_import.py"
+OUTPUT_PATH = HERE / "openlca_ecoinvent_import.ready.py"
 PLACEHOLDER = "REPLACE_WITH_ABSOLUTE_PATH_TO_datasets_FOLDER"
 
 
